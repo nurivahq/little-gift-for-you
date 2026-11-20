@@ -6,8 +6,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A Little Memory</title>
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap"
+        media="print"
+        onload="this.media='all'"
+    >
+    <link rel="preload" as="image" href="./bored-1.jpg" fetchpriority="high">
+    <link rel="prefetch" as="image" href="./me-photo.jpg">
+    <link rel="prefetch" as="image" href="./me-photo2.jpg">
+    <link rel="prefetch" as="image" href="./me-photo3.jpg">
+    <link rel="prefetch" as="image" href="./us.jpg">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&display=swap');
 
         * {
             box-sizing: border-box;
@@ -881,7 +894,7 @@
 
     <div id="first-page" class="screen active">
 
-        <img class="image" src="bored-1.png" alt="">
+        <img class="image" src="./bored-1.jpg" width="720" height="676" alt="" fetchpriority="high" decoding="async">
 
         <h2>Wanna see what's inside?</h2>
 
@@ -975,7 +988,7 @@
             </div>
             <div class="love-response" id="loveResponse" hidden>
                 <div class="video-frame" id="videoFrame">
-                    <video class="memory-video" id="memoryVideo" playsinline preload="none">
+                    <video class="memory-video" id="memoryVideo" playsinline preload="auto">
                         <source src="./our-video.mp4" type="video/mp4">
                         Your browser does not support HTML video.
                     </video>
@@ -990,8 +1003,6 @@
             </div>
         </section>
     </div>
-
-    <script src="./our-video-data.js"></script>
 
     <script>
 
@@ -1050,9 +1061,9 @@
                 gallery.classList.add('photo-gallery');
 
                 const photos = [
-                    'me-photo.png',
-                    'me-photo2.png',
-                    'me-photo3.png'
+                    'me-photo.jpg',
+                    'me-photo2.jpg',
+                    'me-photo3.jpg'
                 ];
 
                 result.textContent = 'You found yourself🤭! Swipe or scroll to see every memory. 🥹';
@@ -1064,7 +1075,11 @@
 
                     const image = document.createElement('img');
                     image.src = photo;
+                    image.width = 1080;
+                    image.height = 1080;
                     image.alt = 'My photo';
+                    image.decoding = 'async';
+                    image.fetchPriority = 'high';
 
                     const caption = document.createElement('p');
                     caption.textContent = 'A little memory ♡';
@@ -1087,8 +1102,12 @@
                 // OUR PICTURE
 
                 const image = document.createElement('img');
-                image.src = 'us.png';
+                image.src = 'us.jpg';
+                image.width = 1280;
+                image.height = 720;
                 image.alt = 'Our picture';
+                image.decoding = 'async';
+                image.fetchPriority = 'high';
 
                 // SONG TITLE
 
@@ -1108,7 +1127,8 @@
                 const music = document.createElement('audio');
                 music.loop = false;
                 music.preload = 'auto';
-                music.src = './our-song.mp3';
+                const isLocalFile = location.protocol === 'file:';
+                if (!isLocalFile) music.src = './our-song.mp3';
 
                 const playerRow = document.createElement('div');
                 playerRow.className = 'song-row';
@@ -1118,7 +1138,6 @@
                 playButton.type = 'button';
                 playButton.textContent = '▶';
                 playButton.setAttribute('aria-label', 'Play our song');
-                playButton.disabled = true;
 
                 const track = document.createElement('input');
                 track.className = 'song-track';
@@ -1146,7 +1165,6 @@
                 errorMessage.textContent = '';
 
                 let uploadedSong = null;
-                let localSongUrl = null;
 
                 function formatTime(seconds) {
                     if (!Number.isFinite(seconds)) return '0:00';
@@ -1203,6 +1221,24 @@
                     }, 800);
                 });
 
+                if (isLocalFile) {
+                    if (localSongObjectUrl) {
+                        music.src = localSongObjectUrl;
+                    } else {
+                        playButton.disabled = true;
+                        prepareLocalMedia()
+                            .then(function() {
+                                if (uploadedSong) return;
+                                music.src = localSongObjectUrl;
+                            })
+                            .catch(function() {
+                                playButton.disabled = true;
+                                errorMessage.textContent =
+                                    'Could not prepare our-song.mp3 for local playback.';
+                            });
+                    }
+                }
+
                 playButton.addEventListener('click', function() {
                     if (music.paused) {
                         music.play().catch(function() {
@@ -1228,37 +1264,12 @@
                     uploadedSong = URL.createObjectURL(file);
                     music.pause();
                     music.src = uploadedSong;
-                    music.load();
+
                     track.value = 0;
                     time.querySelector('.current-time').textContent = '0:00';
                     playButton.disabled = false;
                     errorMessage.textContent = 'Loaded: ' + file.name;
                 });
-
-                fetch('./our-song.mp3', { cache: 'no-store' })
-                    .then(function(response) {
-                        if (!response.ok) {
-                            throw new Error('HTTP ' + response.status);
-                        }
-                        return response.blob();
-                    })
-                    .then(function(blob) {
-                        if (uploadedSong) return;
-
-                        if (localSongUrl) URL.revokeObjectURL(localSongUrl);
-                        localSongUrl = URL.createObjectURL(
-                            new Blob([blob], { type: 'audio/mpeg' })
-                        );
-                        music.pause();
-                        music.src = localSongUrl;
-                        music.load();
-                    })
-                    .catch(function() {
-                        if (!uploadedSong) {
-                            errorMessage.textContent =
-                                'Could not load the local our-song.mp3 file.';
-                        }
-                    });
 
                 playerRow.appendChild(playButton);
                 playerRow.appendChild(track);
@@ -1331,16 +1342,73 @@
         const videoError = document.querySelector('#videoError');
         let playbackCheckTimer = null;
         let playbackStarted = false;
+        let localVideoObjectUrl = null;
+        let localSongObjectUrl = null;
+        let videoBundlePromise = null;
+        let videoBundleError = null;
 
-        if (location.protocol === 'file:' && window.ourVideoInlineData) {
-            const binaryVideo = atob(window.ourVideoInlineData);
-            const videoBytes = new Uint8Array(binaryVideo.length);
-            for (let index = 0; index < binaryVideo.length; index += 1) {
-                videoBytes[index] = binaryVideo.charCodeAt(index);
+        function createLocalMediaUrl(encodedData, mimeType) {
+            const binaryData = atob(encodedData);
+            const bytes = new Uint8Array(binaryData.length);
+            for (let index = 0; index < binaryData.length; index += 1) {
+                bytes[index] = binaryData.charCodeAt(index);
             }
-            memoryVideo.src = URL.createObjectURL(
-                new Blob([videoBytes], { type: 'video/mp4' })
-            );
+            return URL.createObjectURL(new Blob([bytes], { type: mimeType }));
+        }
+
+        function prepareLocalMedia() {
+            if (location.protocol !== 'file:' || (localVideoObjectUrl && localSongObjectUrl)) {
+                return Promise.resolve();
+            }
+            if (!videoBundlePromise) {
+                videoBundlePromise = new Promise(function(resolve, reject) {
+                    const script = document.createElement('script');
+                    script.src = './our-video-data.js';
+                    script.async = true;
+                    script.onload = function() {
+                        try {
+                            if (!window.ourVideoInlineData || !window.ourSongInlineData) {
+                                throw new Error('Local media data is missing');
+                            }
+                            localVideoObjectUrl = createLocalMediaUrl(
+                                window.ourVideoInlineData,
+                                'video/mp4'
+                            );
+                            localSongObjectUrl = createLocalMediaUrl(
+                                window.ourSongInlineData,
+                                'audio/mpeg'
+                            );
+                            memoryVideo.src = localVideoObjectUrl;
+                            memoryVideo.load();
+                            videoBundleError = null;
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    script.onerror = function() {
+                        reject(new Error('Could not load local video data'));
+                    };
+                    document.head.appendChild(script);
+                }).catch(function(error) {
+                    videoBundlePromise = null;
+                    videoBundleError = error;
+                    throw error;
+                });
+            }
+            return videoBundlePromise;
+        }
+
+        if (location.protocol === 'file:') {
+            prepareLocalMedia().catch(function(error) {
+                videoBundleError = error;
+            });
+        } else {
+            const songPrefetch = document.createElement('link');
+            songPrefetch.rel = 'prefetch';
+            songPrefetch.as = 'audio';
+            songPrefetch.href = './our-song.mp3';
+            document.head.appendChild(songPrefetch);
         }
 
         function showVideoFallback() {
@@ -1351,12 +1419,22 @@
             memoryVideo.pause();
             videoFrame.classList.remove('is-playing');
             videoPlayButton.setAttribute('aria-label', 'Play our video');
-            videoError.textContent =
-                'Could not play the bundled our-video.mp4. Make sure our-video-data.js is beside bored.html and try a browser that supports MP4 video.';
+            videoError.textContent = videoBundleError
+                ? 'Could not prepare the local video. Keep our-video-data.js beside index.html and try again.'
+                : 'Could not load our-video.mp4. Keep it beside index.html and check that your browser supports MP4 video.';
             videoError.hidden = false;
         }
 
-        videoPlayButton.addEventListener('click', function() {
+        videoPlayButton.addEventListener('click', async function() {
+            if (location.protocol === 'file:' && !localVideoObjectUrl) {
+                try {
+                    await prepareLocalMedia();
+                } catch (error) {
+                    videoBundleError = error;
+                    showVideoFallback();
+                    return;
+                }
+            }
             if (memoryVideo.ended) memoryVideo.currentTime = 0;
             if (playbackCheckTimer !== null) clearTimeout(playbackCheckTimer);
             playbackStarted = false;
@@ -1397,6 +1475,7 @@
         });
 
         memoryVideo.addEventListener('error', function() {
+            if (location.protocol === 'file:' && !localVideoObjectUrl) return;
             showVideoFallback();
         });
 
